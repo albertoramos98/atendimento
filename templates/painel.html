@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Atendimento</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>📊 Dashboard de Atendimento</h1>
+    <p>Status das mesas em tempo real</p>
+<div id="mesas">
+    {% for mesa, info in mesas.items() %}
+    <div class="mesa {{ info.status }}" id="mesa-{{ mesa }}">
+        <strong>Mesa {{ mesa }}</strong><br>
+
+        Status:
+        <span class="status">{{ info.status }}</span><br>
+
+        <span class="tempo" data-start="{{ info.timestamp }}"></span>
+
+        <button onclick="atender({{ mesa }})">✅ Atendido</button>
+    </div>
+    {% endfor %}
+</div>
+
+
+   <script>
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+    const alertSound = new Audio("/static/sounds/alert.mp3");
+
+    ws.onopen = () => {
+        console.log("🟢 WebSocket conectado");
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log("📩 Evento recebido:", data);
+
+        const mesaEl = document.getElementById(`mesa-${data.mesa}`);
+        if (!mesaEl) return;
+
+        mesaEl.querySelector(".status").innerText = data.status;
+        mesaEl.className = `mesa ${data.status}`;
+
+        if (data.status === "chamando") {
+            alertSound.play().catch(() => {});
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("🔴 WebSocket desconectado");
+    };
+
+    function atender(mesa) {
+        fetch(`/atendido/${mesa}`, { method: "POST" });
+    }
+</script>
+
+
+</body>
+</html>
