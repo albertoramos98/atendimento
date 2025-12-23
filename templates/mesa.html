@@ -3,120 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <title>Mesa {{ mesa }}</title>
-    <link rel="icon" href="/static/icons/favicon.ico" type="image/x-icon">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <!-- Fonte -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f1f5f9;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f4f6f8, #e5e7eb);
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
+            padding: 16px;
         }
 
         .card {
-            background: white;
+            background: #ffffff;
             width: 100%;
-            max-width: 340px;
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            max-width: 380px;
+            padding: 28px 24px;
+            border-radius: 18px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
             text-align: center;
         }
 
-        h1 {
+        .card h1 {
+            font-size: 1.6rem;
             margin-bottom: 6px;
         }
 
-        p {
-            color: #475569;
-            margin-bottom: 20px;
+        .subtitle {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 22px;
         }
 
         button {
             width: 100%;
             padding: 16px;
-            margin-bottom: 12px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: 14px;
             border: none;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-
-        .garcom {
-            background: #0ea5e9;
-            color: white;
-        }
-
-        .conta {
-            background: #22c55e;
-            color: white;
-        }
-
-        button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .status {
-            margin-top: 16px;
+            font-size: 1.05rem;
             font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .btn-garcom {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-garcom:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-conta {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-conta:hover {
+            background: #15803d;
+        }
+
+        .msg {
+            margin-top: 12px;
+            font-size: 0.95rem;
+            color: #374151;
+        }
+
+        .disabled {
+            opacity: 0.6;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>Mesa {{ mesa }}</h1>
-    <p>Escolha uma opção abaixo</p>
+    <h1>🪑 Mesa {{ mesa }}</h1>
+    <p class="subtitle">Selecione uma opção</p>
 
-    <button class="garcom" onclick="chamar('garcom')">🔔 Chamar Garçom</button>
-    <button class="conta" onclick="chamar('conta')">💳 Pedir a Conta</button>
+    <button class="btn-garcom" id="btnGarcom">
+        🔔 Chamar garçom
+    </button>
 
-    <div class="status" id="status"></div>
+    <button class="btn-conta" id="btnConta">
+        💳 Pedir a conta
+    </button>
+
+    <p class="msg" id="mensagem"></p>
 </div>
 
 <script>
-    const mesaId = {{ mesa }};
+    const clienteId = {{ cliente_id }};
+    const mesaId = {{ mesa_id }};
+
+    const btnGarcom = document.getElementById("btnGarcom");
+    const btnConta = document.getElementById("btnConta");
+    const msg = document.getElementById("mensagem");
+
     let bloqueado = false;
 
-    function chamar(tipo) {
-        const statusEl = document.getElementById("status");
-
-        if (bloqueado) {
-            statusEl.innerText = "⏳ Aguarde, o garçom já foi solicitado.";
-            return;
-        }
+    async function chamar(tipo) {
+        if (bloqueado) return;
 
         bloqueado = true;
+        btnGarcom.classList.add("disabled");
+        btnConta.classList.add("disabled");
 
-        fetch(`/chamar/${mesaId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tipo })
-        })
-        .then(res => res.json())
-        .then(data => {
+        msg.innerText = "⏳ Aguarde, o atendimento foi solicitado.";
+
+        try {
+            const resp = await fetch(`/c/${clienteId}/mesa/${mesaId}/chamar`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ tipo })
+            });
+
+            const data = await resp.json();
+
             if (!data.ok) {
-                statusEl.innerText = "⏳ Aguarde, o garçom já foi solicitado.";
-                return;
+                msg.innerText = "⚠️ O atendimento já foi solicitado.";
             }
-
-            statusEl.innerText =
-                tipo === "conta"
-                ? "💳 Conta solicitada. Aguarde o atendimento."
-                : "🔔 Garçom solicitado. Aguarde o atendimento.";
-        })
-        .catch(() => {
+        } catch (e) {
+            msg.innerText = "❌ Erro ao chamar atendimento.";
             bloqueado = false;
-            statusEl.innerText = "❌ Erro ao solicitar. Tente novamente.";
-        });
+            btnGarcom.classList.remove("disabled");
+            btnConta.classList.remove("disabled");
+        }
     }
+
+    btnGarcom.onclick = () => chamar("garcom");
+    btnConta.onclick = () => chamar("conta");
 </script>
 
 </body>

@@ -178,14 +178,16 @@ async def chamar_mesa(
 
     db.commit()
 
+    # 🔔 AVISA O PAINEL CORRETO
     await manager.send_to_cliente(cliente_id, {
-        "mesa": mesa.numero,
+        "id": mesa.id,
         "status": mesa.status,
         "tipo": mesa.tipo,
         "timestamp": mesa.timestamp
     })
 
     return {"ok": True}
+
 
 @app.get("/c/{cliente_id}/mesa/{mesa_id}", response_class=HTMLResponse)
 async def mesa_page(
