@@ -245,11 +245,17 @@ async def chamar_mesa(mesa_id: int, request: Request, payload: dict):
     return {"ok": True}
 
 @app.post("/c/{cliente_id}/mesa/{mesa_id}/atendido")
-async def atender_mesa(
+async def marcar_atendido(
+    request: Request,
     cliente_id: int,
     mesa_id: int,
     db: Session = Depends(get_db)
 ):
+    # painel usa sessão → segurança
+    session_cliente = request.session.get("cliente_id")
+    if session_cliente != cliente_id:
+        return {"ok": False}
+
     mesa = db.query(Mesa).filter(
         Mesa.id == mesa_id,
         Mesa.cliente_id == cliente_id
@@ -261,17 +267,17 @@ async def atender_mesa(
     mesa.status = "livre"
     mesa.tipo = None
     mesa.timestamp = None
-
     db.commit()
 
     await manager.send_to_cliente(cliente_id, {
-        "mesa": mesa.numero,
+        "id": mesa.id,
         "status": "livre",
         "tipo": None,
         "timestamp": None
     })
 
     return {"ok": True}
+
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):

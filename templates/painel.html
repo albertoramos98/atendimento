@@ -5,10 +5,10 @@
     <title>Dashboard • Atendimento</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- CSS do painel -->
+    <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css">
 
-    <!-- Fonte Inter -->
+    <!-- Fonte -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -38,22 +38,23 @@
             >
             <button type="submit">Adicionar mesa</button>
         </form>
-    </section>
-    <form action="/qrcodes/baixar" method="post" style="margin-top:12px;">
-    <button type="submit" style="
-        width:100%;
-        padding:12px;
-        border-radius:10px;
-        background:#0ea5e9;
-        color:white;
-        font-weight:600;
-        border:none;
-        cursor:pointer;
-    ">
-        📥 Baixar QR Codes das mesas
-    </button>
-</form>
 
+        <!-- BOTÃO QR -->
+        <form action="/qrcodes/baixar" method="post" style="margin-top:12px;">
+            <button type="submit" style="
+                width:100%;
+                padding:12px;
+                border-radius:10px;
+                background:#0ea5e9;
+                color:white;
+                font-weight:600;
+                border:none;
+                cursor:pointer;
+            ">
+                📥 Baixar QR Codes das mesas
+            </button>
+        </form>
+    </section>
 
     <!-- =========================
          GRID DE MESAS
@@ -97,12 +98,34 @@
 </div>
 
 <!-- =========================
+     ÁUDIO
+     ========================= -->
+<audio id="alertSound" src="/static/sounds/alert.mp3" preload="auto"></audio>
+
+<!-- =========================
      SCRIPT
      ========================= -->
 <script>
+    const clienteId = {{ request.session.cliente_id }};
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
+    /* ===== ÁUDIO ===== */
+    const alertSound = document.getElementById("alertSound");
+    let audioLiberado = false;
+
+    document.addEventListener("click", () => {
+        if (!audioLiberado) {
+            alertSound.play().then(() => {
+                alertSound.pause();
+                alertSound.currentTime = 0;
+                audioLiberado = true;
+                console.log("🔊 Áudio liberado");
+            }).catch(() => {});
+        }
+    }, { once: true });
+
+    /* ===== WEBSOCKET ===== */
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
@@ -122,14 +145,20 @@
 
         const tempoEl = mesaEl.querySelector(".tempo");
         tempoEl.dataset.start = data.timestamp || "";
+
+        if (audioLiberado && data.status === "chamando") {
+            alertSound.play().catch(() => {});
+        }
     };
 
+    /* ===== ATENDER ===== */
     function atender(mesaId) {
-        fetch(`/c/{{ request.session.cliente_id }}/mesa/${mesaId}/atendido`, {
+        fetch(`/c/${clienteId}/mesa/${mesaId}/atendido`, {
             method: "POST"
         });
     }
 
+    /* ===== TEMPO ===== */
     function atualizarTempos() {
         document.querySelectorAll(".tempo").forEach(el => {
             const start = el.dataset.start;
