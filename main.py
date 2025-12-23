@@ -187,6 +187,31 @@ async def chamar_mesa(
 
     return {"ok": True}
 
+@app.get("/c/{cliente_id}/mesa/{mesa_id}", response_class=HTMLResponse)
+async def mesa_page(
+    request: Request,
+    cliente_id: int,
+    mesa_id: int,
+    db: Session = Depends(get_db)
+):
+    mesa = db.query(Mesa).filter(
+        Mesa.id == mesa_id,
+        Mesa.cliente_id == cliente_id
+    ).first()
+
+    if not mesa:
+        return HTMLResponse("Mesa não encontrada", status_code=404)
+
+    return templates.TemplateResponse(
+        "mesa.html",
+        {
+            "request": request,
+            "mesa": mesa.numero,
+            "cliente_id": cliente_id,
+            "mesa_id": mesa_id
+        }
+    )
+
 
 # ========================
 # CHAMADAS
@@ -362,4 +387,3 @@ async def baixar_qrcodes(
             "Content-Disposition": "attachment; filename=qrcodes_mesas.zip"
         }
     )
-    

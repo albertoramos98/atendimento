@@ -4,7 +4,7 @@ from database import SessionLocal
 from models import Mesa
 
 # 🔧 CONFIGURAÇÃO
-BASE_URL = "https://atendimento-pf79.onrender.com"  
+BASE_URL = f"https://atendimento-pf79.onrender.com/c/{cliente_id}/mesa/{mesa.id}"  
 PASTA_QR = "qrcodes"
 
 os.makedirs(PASTA_QR, exist_ok=True)
