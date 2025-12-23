@@ -1,14 +1,28 @@
 import qrcode
 import os
+from database import SessionLocal
+from models import Mesa
 
-BASE_URL = "https://atendimento-pf79.onrender.com/mesa"
-TOTAL_MESAS = 4  # muda depois se quiser mais mesas
+# 🔧 CONFIGURAÇÃO
+BASE_URL = "https://atendimento-pf79.onrender.com"  
+PASTA_QR = "qrcodes"
 
-os.makedirs("qrcodes", exist_ok=True)
+os.makedirs(PASTA_QR, exist_ok=True)
 
-for mesa in range(1, TOTAL_MESAS + 1):
-    url = f"{BASE_URL}/{mesa}"
+db = SessionLocal()
+
+mesas = db.query(Mesa).all()
+
+for mesa in mesas:
+    url = f"{BASE_URL}/c/{mesa.cliente_id}/mesa/{mesa.id}"
+
     img = qrcode.make(url)
-    img.save(f"qrcodes/mesa_{mesa}.png")
 
-print("QR Code gerado com sucesso!")
+    nome_arquivo = f"cliente_{mesa.cliente_id}_mesa_{mesa.numero}.png"
+    caminho = os.path.join(PASTA_QR, nome_arquivo)
+
+    img.save(caminho)
+
+    print(f"QR gerado: {caminho} → {url}")
+
+db.close()

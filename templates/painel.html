@@ -2,11 +2,16 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard - Atendimento</title>
-    <link rel="icon" href="/static/icons/favicon.ico" type="image/x-icon">
-
+    <title>Dashboard • Atendimento</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- CSS do painel -->
     <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Fonte Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -15,72 +20,121 @@
     <p>Mesas em tempo real</p>
 </header>
 
-<div id="mesas">
-    {% for mesa, info in mesas.items() %}
-    <div class="mesa {{ info.status }}" id="mesa-{{ mesa }}">
-        <strong>Mesa {{ mesa }}</strong><br>
+<div class="main-container">
 
-        <span class="tipo">
-            {% if info.tipo == "conta" %}
-                💳 Pedindo conta
-            {% elif info.tipo == "garcom" %}
-                🔔 Chamando garçom
-            {% else %}
-                —
-            {% endif %}
-        </span><br>
+    <!-- =========================
+         GERENCIAR MESAS
+         ========================= -->
+    <section class="gerenciar-mesas">
+        <h2>➕ Gerenciar Mesas</h2>
 
-        Status: <span class="status">{{ info.status }}</span>
+        <form action="/mesas/criar" method="post" class="form-mesa">
+            <input
+                type="number"
+                name="numero"
+                placeholder="Número da mesa"
+                min="1"
+                required
+            >
+            <button type="submit">Adicionar mesa</button>
+        </form>
+    </section>
+    <form action="/qrcodes/baixar" method="post" style="margin-top:12px;">
+    <button type="submit" style="
+        width:100%;
+        padding:12px;
+        border-radius:10px;
+        background:#0ea5e9;
+        color:white;
+        font-weight:600;
+        border:none;
+        cursor:pointer;
+    ">
+        📥 Baixar QR Codes das mesas
+    </button>
+</form>
 
-        <span class="tempo" data-start="{{ info.timestamp }}"></span>
 
-        <button onclick="atender({{ mesa }})">✅ Atendido</button>
+    <!-- =========================
+         GRID DE MESAS
+         ========================= -->
+    <div id="mesas">
+        {% for numero, info in mesas.items() %}
+        <div class="mesa {{ info.status }}" id="mesa-{{ info.id }}">
+
+            <strong>Mesa {{ numero }}</strong>
+
+            <span class="tipo">
+                {% if info.tipo == "garcom" %}
+                    🔔 Chamando garçom
+                {% elif info.tipo == "conta" %}
+                    💳 Pedindo conta
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+
+            <span class="status">
+                Status: {{ info.status }}
+            </span>
+
+            <span class="tempo" data-start="{{ info.timestamp }}"></span>
+
+            <button class="atendido" onclick="atender({{ info.id }})">
+                ✅ Atendido
+            </button>
+
+            <form action="/mesas/{{ info.id }}/remover" method="post">
+                <button type="submit" class="remover">
+                    ❌ Remover mesa
+                </button>
+            </form>
+
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+
 </div>
 
+<!-- =========================
+     SCRIPT
+     ========================= -->
 <script>
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${protocol}://${location.host}/ws`);
-    const alertSound = new Audio("/static/sounds/alert.mp3");
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
-        const mesaEl = document.getElementById(`mesa-${data.mesa}`);
+        const mesaEl = document.getElementById(`mesa-${data.id}`);
         if (!mesaEl) return;
 
         mesaEl.className = `mesa ${data.status}`;
-        mesaEl.querySelector(".status").innerText = data.status;
+        mesaEl.querySelector(".status").innerText = `Status: ${data.status}`;
 
         const tipoEl = mesaEl.querySelector(".tipo");
         tipoEl.innerText =
-            data.tipo === "conta"
-            ? "💳 Pedindo conta"
-            : data.tipo === "garcom"
-            ? "🔔 Chamando garçom"
-            : "—";
+            data.tipo === "garcom"
+                ? "🔔 Chamando garçom"
+                : data.tipo === "conta"
+                ? "💳 Pedindo conta"
+                : "—";
 
         const tempoEl = mesaEl.querySelector(".tempo");
         tempoEl.dataset.start = data.timestamp || "";
-
-        if (data.status === "chamando") {
-            alertSound.play().catch(() => {});
-            document.title = "🔔 Nova chamada!";
-            if (navigator.vibrate) navigator.vibrate([200,100,200]);
-        } else {
-            document.title = "Dashboard - Atendimento";
-        }
     };
 
-    function atender(mesa) {
-        fetch(`/atendido/${mesa}`, { method: "POST" });
+    function atender(mesaId) {
+        fetch(`/c/{{ request.session.cliente_id }}/mesa/${mesaId}/atendido`, {
+            method: "POST"
+        });
     }
 
     function atualizarTempos() {
         document.querySelectorAll(".tempo").forEach(el => {
             const start = el.dataset.start;
-            if (!start) {
+
+            if (!start || start === "None") {
                 el.innerText = "";
                 return;
             }

@@ -4,3 +4,9 @@ jinja2
 qrcode[pil]
 pillow
 websockets
+sqlalchemy
+passlib[bcrypt]
+python-multipart
+itsdangerous
+passlib[argon2]
+
