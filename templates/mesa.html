@@ -2,62 +2,70 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mesa {{ mesa }}</title>
+    <link rel="icon" href="/static/icons/favicon.ico" type="image/x-icon">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f7f7f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f1f5f9;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             height: 100vh;
             margin: 0;
         }
 
         .card {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
+            background: white;
             width: 100%;
-            max-width: 320px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 340px;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            text-align: center;
         }
 
         h1 {
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
 
         p {
-            color: #555;
+            color: #475569;
+            margin-bottom: 20px;
         }
 
         button {
-            margin-top: 20px;
             width: 100%;
             padding: 16px;
-            font-size: 18px;
-            background: #e63946;
-            color: #fff;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
         }
 
-        button:active {
-            transform: scale(0.98);
+        .garcom {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .conta {
+            background: #22c55e;
+            color: white;
         }
 
         button:disabled {
-            background: #aaa;
+            background: #94a3b8;
             cursor: not-allowed;
         }
 
         .status {
-            margin-top: 15px;
-            font-weight: bold;
+            margin-top: 16px;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -65,32 +73,48 @@
 
 <div class="card">
     <h1>Mesa {{ mesa }}</h1>
-    <p>Precisa de atendimento?</p>
+    <p>Escolha uma opção abaixo</p>
 
-    <button id="btnChamar" onclick="chamar()">🔔 Chamar Garçom</button>
+    <button class="garcom" onclick="chamar('garcom')">🔔 Chamar Garçom</button>
+    <button class="conta" onclick="chamar('conta')">💳 Pedir a Conta</button>
 
     <div class="status" id="status"></div>
 </div>
 
 <script>
     const mesaId = {{ mesa }};
-    const statusEl = document.getElementById("status");
-    const btn = document.getElementById("btnChamar");
+    let bloqueado = false;
 
-    function chamar() {
-        btn.disabled = true;
-        btn.innerText = "Chamando...";
+    function chamar(tipo) {
+        const statusEl = document.getElementById("status");
+
+        if (bloqueado) {
+            statusEl.innerText = "⏳ Aguarde, o garçom já foi solicitado.";
+            return;
+        }
+
+        bloqueado = true;
 
         fetch(`/chamar/${mesaId}`, {
-            method: "POST"
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tipo })
         })
-        .then(() => {
-            statusEl.innerText = "✅ Garçom chamado. Aguarde.";
+        .then(res => res.json())
+        .then(data => {
+            if (!data.ok) {
+                statusEl.innerText = "⏳ Aguarde, o garçom já foi solicitado.";
+                return;
+            }
+
+            statusEl.innerText =
+                tipo === "conta"
+                ? "💳 Conta solicitada. Aguarde o atendimento."
+                : "🔔 Garçom solicitado. Aguarde o atendimento.";
         })
         .catch(() => {
-            statusEl.innerText = "❌ Erro ao chamar. Tente novamente.";
-            btn.disabled = false;
-            btn.innerText = "🔔 Chamar Garçom";
+            bloqueado = false;
+            statusEl.innerText = "❌ Erro ao solicitar. Tente novamente.";
         });
     }
 </script>

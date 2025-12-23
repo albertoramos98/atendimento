@@ -15,15 +15,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 import time
 
 mesas = {
-    1: {"status": "livre", "timestamp": None},
-    2: {"status": "livre", "timestamp": None},
-    3: {"status": "livre", "timestamp": None},
-    4: {"status": "livre", "timestamp": None},
+    1: {"status": "livre", "tipo": None, "timestamp": None},
+    2: {"status": "livre", "tipo": None, "timestamp": None},
+    3: {"status": "livre", "tipo": None, "timestamp": None},
 }
+
 
 
 # conexões websocket do painel
 connections = []
+
 
 
 
@@ -45,35 +46,52 @@ async def dashboard(request: Request):
 
 
 
+import time
+from fastapi import Body
+
 @app.post("/chamar/{mesa_id}")
-async def chamar_mesa(mesa_id: int):
-    mesas[mesa_id]["status"] = "chamando"
-    mesas[mesa_id]["timestamp"] = time.time()
+async def chamar_mesa(mesa_id: int, payload: dict = Body(...)):
+    tipo = payload.get("tipo")  # "garcom" ou "conta"
+
+    # evita spam
+    if mesas[mesa_id]["status"] == "chamando":
+        return {"ok": False, "message": "Já solicitado"}
+
+    mesas[mesa_id] = {
+        "status": "chamando",
+        "tipo": tipo,
+        "timestamp": time.time()
+    }
 
     for ws in connections:
         await ws.send_json({
             "mesa": mesa_id,
             "status": "chamando",
+            "tipo": tipo,
             "timestamp": mesas[mesa_id]["timestamp"]
         })
 
     return {"ok": True}
 
 
-
 @app.post("/atendido/{mesa_id}")
 async def atender_mesa(mesa_id: int):
-    mesas[mesa_id]["status"] = "livre"
-    mesas[mesa_id]["timestamp"] = None
+    mesas[mesa_id] = {
+        "status": "livre",
+        "tipo": None,
+        "timestamp": None
+    }
 
     for ws in connections:
         await ws.send_json({
             "mesa": mesa_id,
             "status": "livre",
+            "tipo": None,
             "timestamp": None
         })
 
     return {"ok": True}
+
 
 
 @app.websocket("/ws")

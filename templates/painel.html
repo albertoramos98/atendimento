@@ -1,19 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
+    <meta charset="UTF-8">
     <title>Dashboard - Atendimento</title>
+    <link rel="icon" href="/static/icons/favicon.ico" type="image/x-icon">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>📊 Dashboard de Atendimento</h1>
-    <p>Status das mesas em tempo real</p>
+
+<header>
+    <h1>📊 Atendimento</h1>
+    <p>Mesas em tempo real</p>
+</header>
+
 <div id="mesas">
     {% for mesa, info in mesas.items() %}
     <div class="mesa {{ info.status }}" id="mesa-{{ mesa }}">
         <strong>Mesa {{ mesa }}</strong><br>
 
-        Status:
-        <span class="status">{{ info.status }}</span><br>
+        <span class="tipo">
+            {% if info.tipo == "conta" %}
+                💳 Pedindo conta
+            {% elif info.tipo == "garcom" %}
+                🔔 Chamando garçom
+            {% else %}
+                —
+            {% endif %}
+        </span><br>
+
+        Status: <span class="status">{{ info.status }}</span>
 
         <span class="tempo" data-start="{{ info.timestamp }}"></span>
 
@@ -22,50 +39,62 @@
     {% endfor %}
 </div>
 
-
-   <script>
+<script>
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${protocol}://${location.host}/ws`);
-
     const alertSound = new Audio("/static/sounds/alert.mp3");
 
-    ws.onopen = () => {
-        console.log("🟢 WebSocket conectado");
-    };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-   ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+        const mesaEl = document.getElementById(`mesa-${data.mesa}`);
+        if (!mesaEl) return;
 
-    const mesaEl = document.getElementById(`mesa-${data.mesa}`);
-    if (!mesaEl) return;
+        mesaEl.className = `mesa ${data.status}`;
+        mesaEl.querySelector(".status").innerText = data.status;
 
-    mesaEl.querySelector(".status").innerText = data.status;
-    mesaEl.className = `mesa ${data.status}`;
+        const tipoEl = mesaEl.querySelector(".tipo");
+        tipoEl.innerText =
+            data.tipo === "conta"
+            ? "💳 Pedindo conta"
+            : data.tipo === "garcom"
+            ? "🔔 Chamando garçom"
+            : "—";
 
-    const tempoEl = mesaEl.querySelector(".tempo");
-    tempoEl.dataset.start = data.timestamp || "";
+        const tempoEl = mesaEl.querySelector(".tempo");
+        tempoEl.dataset.start = data.timestamp || "";
 
-    if (data.status === "chamando") {
-        alertSound.play().catch(() => {});
-        document.title = "🔔 Chamando atendimento!";
-        
-        if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
+        if (data.status === "chamando") {
+            alertSound.play().catch(() => {});
+            document.title = "🔔 Nova chamada!";
+            if (navigator.vibrate) navigator.vibrate([200,100,200]);
+        } else {
+            document.title = "Dashboard - Atendimento";
         }
-    } else {
-        document.title = "Dashboard - Atendimento";
-    }
-};
-
-    ws.onclose = () => {
-        console.log("🔴 WebSocket desconectado");
     };
 
     function atender(mesa) {
         fetch(`/atendido/${mesa}`, { method: "POST" });
     }
-</script>
 
+    function atualizarTempos() {
+        document.querySelectorAll(".tempo").forEach(el => {
+            const start = el.dataset.start;
+            if (!start) {
+                el.innerText = "";
+                return;
+            }
+
+            const diff = Math.floor(Date.now() / 1000 - start);
+            const min = Math.floor(diff / 60);
+            const sec = diff % 60;
+
+            el.innerText = `⏱️ ${min}m ${sec}s`;
+        });
+    }
+
+    setInterval(atualizarTempos, 1000);
+</script>
 
 </body>
 </html>
