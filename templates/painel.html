@@ -33,20 +33,29 @@
         console.log("🟢 WebSocket conectado");
     };
 
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("📩 Evento recebido:", data);
+   ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
 
-        const mesaEl = document.getElementById(`mesa-${data.mesa}`);
-        if (!mesaEl) return;
+    const mesaEl = document.getElementById(`mesa-${data.mesa}`);
+    if (!mesaEl) return;
 
-        mesaEl.querySelector(".status").innerText = data.status;
-        mesaEl.className = `mesa ${data.status}`;
+    mesaEl.querySelector(".status").innerText = data.status;
+    mesaEl.className = `mesa ${data.status}`;
 
-        if (data.status === "chamando") {
-            alertSound.play().catch(() => {});
+    const tempoEl = mesaEl.querySelector(".tempo");
+    tempoEl.dataset.start = data.timestamp || "";
+
+    if (data.status === "chamando") {
+        alertSound.play().catch(() => {});
+        document.title = "🔔 Chamando atendimento!";
+        
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
         }
-    };
+    } else {
+        document.title = "Dashboard - Atendimento";
+    }
+};
 
     ws.onclose = () => {
         console.log("🔴 WebSocket desconectado");
